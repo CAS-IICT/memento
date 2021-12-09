@@ -1,0 +1,95 @@
+version: '3.7'
+services:
+  redis:
+    container_name: redis
+    image: redis:5.0.5-alpine
+    restart: always
+    command: [ "redis-server", "--appendonly", "yes" ]
+    volumes:
+      - ./volumes/redis:/data
+
+  postgres:
+    container_name: postgres
+    image: postgres:11.5-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=memento
+      - POSTGRES_DB=memento
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./volumes/postgresql:/var/lib/postgresql/data
+
+  # deepstream:
+  #   container_name: ethstats-network-deepstream
+  #   image: deepstreamio/deepstream.io:3.2.2
+  #   restart: always
+  #   ports:
+  #     - 6020:6020
+
+  memento:
+    container_name: memento
+    image: alethio/memento:latest
+    restart: always
+    depends_on:
+      - redis
+      - postgres
+    ports:
+      - 3001:3001 # explorer 用的api端口
+      - 8081:3000 # memento 前端界面端口
+    environment:
+      - PG_PASSWORD=password
+    volumes:
+      - ./volumes/memento:/config
+
+  explorer:
+    container_name: explorer
+    image: alethio/ethereum-lite-explorer:latest
+    restart: always
+    depends_on:
+      - memento
+    ports:
+      - 8080:80
+    volumes:
+      - ./volumes/lite-explorer/config.json:/usr/share/nginx/html/config.json
+      # https://github.com/Alethio/ethereum-lite-explorer/issues/72
+      # docker中默认安装的ibft是2.0.0，无法解析memento中返回的extraData字段，需要加上0x前缀
+      - ./volumes/lite-explorer/plugins/aleth.io/eth-ibft2/2.0.1/:/usr/share/nginx/html/plugins/aleth.io/eth-ibft2/2.0.1/
+
+  # network-server:
+  #   container_name: network-server
+  #   image: alethio/ethstats-network-server:latest
+  #   restart: always
+  #   depends_on:
+  #     - deepstream
+  #     - redis
+  #   ports:
+  #     - 3000:3000
+  #     - 3030:3030
+  #     - 8888:8888
+  #   environment:
+  #     - NETWORK_ID=1337
+  #     - NETWORK_NAME=insurance
+  #     - LITE=1
+  #     - LITE_DB_PERSIST=1
+  #     - LITE_API_PORT=3030
+  #     - APP_PORT=3000
+  #     - METRICS_PORT=8888
+  #     - DEEPSTREAM_HOST=deepstream
+  #     - REDIS_HOST=redis
+  #   command: ["./bin/app.js", "-v"]
+  
+  # network-dashboard:
+  #   container_name: network-dashboard
+  #   image: alethio/ethstats-network-dashboard:latest
+  #   restart: always
+  #   depends_on:
+  #     - server
+  #   volumes:
+  #     - ./volumes/dashboard/nginx/conf.d:/etc/nginx/conf.d
+  #   ports:
+  #     - 80:80
+  #   environment:
+  #     - NETSTATS_API_URL=http://127.0.0.1:3030
+  #     - DS_URL=127.0.0.1:6020
+  #     - DS_USER=frontend
+  #     - DS_PASS=

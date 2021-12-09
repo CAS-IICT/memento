@@ -1,0 +1,3 @@
+volumes/redis
+volumes/postgresql
+.DS_Store
