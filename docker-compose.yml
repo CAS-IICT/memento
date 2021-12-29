@@ -16,15 +16,26 @@ services:
       - POSTGRES_USER=memento
       - POSTGRES_DB=memento
       - POSTGRES_PASSWORD=password
+    ports:
+      - 5432:5432
     volumes:
       - ./volumes/postgresql:/var/lib/postgresql/data
 
+  adminer:
+    container_name: adminer
+    image: adminer:latest
+    restart: always
+    ports:
+      - 8082:8080
+  
   # deepstream:
   #   container_name: ethstats-network-deepstream
   #   image: deepstreamio/deepstream.io:3.2.2
   #   restart: always
   #   ports:
   #     - 6020:6020
+  
+
 
   memento:
     container_name: memento
